@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "NaraLabs Registry CLI — init, validate, publish Soroban event schemas",
   "license": "MIT",
-  "author": "NaraLabs <dev@naralabs.dev>",
+  "author": "Indra Mahesa <indramahesa128@gmail.com>",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/naralabsdev/naralabs-cli.git"

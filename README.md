@@ -44,3 +44,7 @@ export NARALABS_DEPLOY_TOKEN=nl_live_...
 naralabs registry validate
 naralabs registry publish
 ```
+
+## Maintainer
+
+- **Indra Mahesa** ([@zinct](https://github.com/zinct)) · indramahesa128@gmail.com
