@@ -1,0 +1,53 @@
+{
+  "name": "@naralabs/cli",
+  "version": "0.1.0",
+  "description": "NaraLabs Registry CLI — init, validate, publish Soroban event schemas",
+  "license": "MIT",
+  "author": "NaraLabs <dev@naralabs.dev>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/naralabsdev/naralabs-cli.git"
+  },
+  "homepage": "https://github.com/naralabsdev/naralabs-cli#readme",
+  "bugs": {
+    "url": "https://github.com/naralabsdev/naralabs-cli/issues"
+  },
+  "keywords": [
+    "stellar",
+    "soroban",
+    "naralabs",
+    "registry",
+    "sep-0048",
+    "cli"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "naralabs": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build && npm test",
+    "dev": "tsx src/index.ts",
+    "test": "node --test dist/lib/schema-validate.test.js"
+  },
+  "dependencies": {
+    "@stellar-expert/contract-wasm-interface-parser": "^6.0.1",
+    "@stellar/stellar-sdk": "^17.0.0",
+    "commander": "^13.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "tsx": "^4.19.0",
+    "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
