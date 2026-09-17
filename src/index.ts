@@ -1,12 +1,17 @@
 #!/usr/bin/env node
 import { Command } from "commander";
-import { readFileSync, writeFileSync } from "node:fs";
-import { parseContractMetadata } from "@stellar-expert/contract-wasm-interface-parser";
+import { resolve } from "node:path";
+
+import { publishBundle } from "./lib/api.js";
 import { loadConfig, saveConfig, CONFIG_PATH, requireSchemaPath, resolveSchemaPath } from "./lib/config.js";
-import { fetchWasm, rpcUrlForNetwork } from "./lib/rpc.js";
-import { transformParserToBundle } from "./lib/schema-generate.js";
-import { validateBundle, type ContractBundle } from "./lib/schema-validate.js";
-import { publishBundle, registerContract } from "./lib/api.js";
+import {
+  ContractLookupError,
+  initProjectFolder,
+  initSchemaFile,
+} from "./lib/schema-init.js";
+import { readSchemaFile } from "./lib/schema-io.js";
+import { rpcUrlForNetwork } from "./lib/rpc.js";
+import { validateBundle } from "./lib/schema-validate.js";
 
 const program = new Command();
 program.name("naralabs").description("NaraLabs Registry CLI").version("0.1.0");
@@ -32,6 +37,21 @@ program
     console.log("✓ Logged out");
   });
 
+program
+  .command("init")
+  .argument("<folder>", "Project folder (e.g. indramahesa)")
+  .option("-n, --network <network>", "Network", loadConfig().network)
+  .option("--rpc-url <url>", "Stellar RPC URL")
+  .description("Create a schema project and write naralabs.schema.yaml")
+  .action(async (folder: string, opts: { network?: string; rpcUrl?: string }) => {
+    try {
+      await initProjectFolder(folder, opts);
+    } catch (err) {
+      console.error(`\n  ✗ ${err instanceof Error ? err.message : err}\n`);
+      process.exit(1);
+    }
+  });
+
 const configCmd = program.command("config").description("CLI settings");
 configCmd
   .command("set")
@@ -54,45 +74,48 @@ registry
   .option("-n, --network <network>", "Network", loadConfig().network)
   .option("-o, --output <file>", "Output path")
   .option("--rpc-url <url>", "Stellar RPC URL")
-  .action(async (contractId: string, opts: { network: string; output?: string; rpcUrl?: string }) => {
+  .description("Verify contract and write naralabs.schema.yaml")
+  .action(async (contractId: string, opts: { network?: string; output?: string; rpcUrl?: string }) => {
     const cfg = loadConfig();
     const network = opts.network ?? cfg.network ?? "testnet";
     const rpcUrl = rpcUrlForNetwork(network, opts.rpcUrl);
+    const outputPath = resolve(process.cwd(), opts.output ?? resolveSchemaPath());
 
-    console.log("Analyzing contract...");
-    const wasm = await fetchWasm(rpcUrl, contractId);
-    console.log("✓ Contract found");
-    console.log("✓ WASM found");
+    console.log(`\n  Network  ${network}`);
+    console.log(`  Contract ${contractId}\n`);
 
-    const parsed = parseContractMetadata(wasm) as ReturnType<typeof parseContractMetadata>;
-    const bundle = transformParserToBundle(parsed as never, contractId, network);
-    const count = bundle.events.length;
-    console.log(`✓ Events detected${count ? `: ${bundle.events.map((e) => e.name).join(", ")}` : ""}`);
+    try {
+      const { outputPath: written } = await initSchemaFile(contractId, {
+        network,
+        rpcUrl,
+        outputPath,
+      });
 
-    const out = opts.output ?? resolveSchemaPath();
-    writeFileSync(out, JSON.stringify(bundle, null, 2));
-    console.log("Generating schema...");
-    console.log(`✓ Created ${out.split("/").pop()}`);
+      console.log(`  ✓ ${written.split("/").pop()}\n`);
+    } catch (err) {
+      console.error(`  ✗ ${err instanceof ContractLookupError ? err.message : err instanceof Error ? err.message : err}\n`);
+      process.exit(1);
+    }
   });
 
 registry
   .command("validate")
-  .argument("[file]", "Schema file (default: ./naralabs.schema.json)")
+  .argument("[file]", "Schema file (default: ./naralabs.schema.yaml)")
   .action((file?: string) => {
     const path = requireSchemaPath(file);
-    const bundle = JSON.parse(readFileSync(path, "utf8")) as ContractBundle;
+    const bundle = readSchemaFile(path);
     validateBundle(bundle);
     console.log(`✓ Valid ${path}`);
   });
 
 registry
   .command("publish")
-  .argument("[file]", "Schema file (default: ./naralabs.schema.json)")
+  .argument("[file]", "Schema file (default: ./naralabs.schema.yaml)")
   .option("--canonical", "Request canonical status")
   .option("--on-chain", "Also submit on-chain registry tx")
   .action(async (file?: string, opts?: { canonical?: boolean; onChain?: boolean }) => {
     const path = requireSchemaPath(file);
-    const bundle = JSON.parse(readFileSync(path, "utf8")) as ContractBundle;
+    const bundle = readSchemaFile(path);
     validateBundle(bundle);
 
     const cfg = loadConfig();
@@ -101,16 +124,15 @@ registry
       process.exit(1);
     }
 
-    await registerContract(bundle.contract, bundle.network);
-    const result = await publishBundle(bundle);
-    console.log("✓ Published to Registry");
-    console.log(JSON.stringify(result, null, 2));
+    const results = await publishBundle(bundle);
+    console.log(`✓ Published ${results.length} event schema(s)`);
+    console.log(JSON.stringify(results, null, 2));
 
     if (opts?.canonical) {
-      console.log("ℹ --canonical: use dashboard or API POST /v1/schemas/{id}/canonicalize with authority signature");
+      console.log("ℹ Canonical status: use dashboard verify flow.");
     }
     if (opts?.onChain) {
-      console.log("ℹ --on-chain: requires Registry Soroban contract deployment (REGISTRY_CONTRACT_ID)");
+      console.log("ℹ On-chain registry: set REGISTRY_CONTRACT_ID.");
     }
   });
 
@@ -119,8 +141,9 @@ registry
   .argument("[file]", "Schema file")
   .action((file?: string) => {
     const path = requireSchemaPath(file);
-    const bundle = JSON.parse(readFileSync(path, "utf8")) as ContractBundle;
+    const bundle = readSchemaFile(path);
     console.log(`Contract: ${bundle.contract} (${bundle.network})`);
+    console.log(`Source: ${bundle.source ?? "unknown"}`);
     console.log(`Events: ${bundle.events.length}`);
   });
 
