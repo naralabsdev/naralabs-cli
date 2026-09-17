@@ -1,0 +1,33 @@
+# NaraLabs event schema
+# Contracts without on-chain event metadata require manual edits before publish.
+# Map each event's prefix_topics and params to what your contract emits on-chain.
+
+$schema: "https://naralabs.xyz/schemas/naralabs-contract/v1"
+contract: "CBGROPHYFCL5FNTNJF6HXVJEWPLOMHZJ3MNISPTB2JHXLGKQMO2MCWK4"
+network: "testnet"
+version: "1.0.0"
+source: "manual"
+generated_at: "2026-09-14T15:56:01.616Z"
+events:
+  - name: "counter_incremented"
+    prefix_topics:
+      - "cntr"
+      - "incr"
+    data_format: "single_value"
+    doc: "Published on every increment."
+    params:
+      - name: "count"
+        type: "u32"
+        location: "data"
+        doc: "Counter value after increment."
+  - name: "threshold_reached"
+    prefix_topics:
+      - "cntr"
+      - "thr"
+    data_format: "single_value"
+    doc: "Published when count hits a multiple of 3."
+    params:
+      - name: "count"
+        type: "u32"
+        location: "data"
+        doc: "Counter value at threshold."
