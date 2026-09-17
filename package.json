@@ -35,12 +35,13 @@
     "build": "tsc",
     "prepublishOnly": "npm run build && npm test",
     "dev": "tsx src/index.ts",
-    "test": "node --test dist/lib/schema-validate.test.js"
+    "test": "node --test dist/lib/schema-validate.test.js dist/lib/auth.test.js"
   },
   "dependencies": {
     "@stellar-expert/contract-wasm-interface-parser": "^6.0.1",
     "@stellar/stellar-sdk": "^17.0.0",
-    "commander": "^13.1.0"
+    "commander": "^13.1.0",
+    "yaml": "^2.9.1"
   },
   "devDependencies": {
     "@types/node": "^20",
