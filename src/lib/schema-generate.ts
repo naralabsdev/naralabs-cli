@@ -34,8 +34,21 @@ function normalizeType(t: string): string {
 }
 
 function eventName(key: string, pe: ParserEvent): string {
-  if (pe.prefixTopics?.[0]) return pe.prefixTopics[0].toLowerCase();
-  return key.replace(/Event$/, "").replace(/([a-z])([A-Z])/g, "$1_$2").toLowerCase();
+  const fromKey = key
+    .replace(/Event$/, "")
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2")
+    .toLowerCase();
+
+  if (fromKey && fromKey !== "event") {
+    return fromKey;
+  }
+
+  if (pe.prefixTopics?.length) {
+    return pe.prefixTopics.map((topic) => topic.toLowerCase()).join("_");
+  }
+
+  return key.toLowerCase();
 }
 
 export function transformParserToBundle(
